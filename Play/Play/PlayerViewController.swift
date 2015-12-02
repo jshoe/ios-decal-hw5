@@ -15,6 +15,7 @@ class PlayerViewController: UIViewController {
     
     var currentIndex: Int!
     var player: AVPlayer!
+    var currentTrack: NSURL! = nil
     var trackImageView: UIImageView!
     
     var playPauseButton: UIButton!
@@ -130,7 +131,20 @@ class PlayerViewController: UIViewController {
         let track = tracks[currentIndex]
         let url = NSURL(string: "https://api.soundcloud.com/tracks/\(track.id)/stream?client_id=\(clientID)")!
         // FILL ME IN
-    
+        if currentTrack != url {
+            player = AVPlayer(playerItem: AVPlayerItem(URL: url))
+            currentTrack = url
+        }
+        
+        if player.rate == 0 {
+            let pauseImage = UIImage(named: "pause")?.imageWithRenderingMode(.AlwaysTemplate)
+            playPauseButton.setImage(pauseImage, forState: UIControlState.Normal)
+            player.play()
+        } else {
+            let playImage = UIImage(named: "play")?.imageWithRenderingMode(.AlwaysTemplate)
+            playPauseButton.setImage(playImage, forState: UIControlState.Normal)
+            player.pause()
+        }
     }
     
     /* 
@@ -140,7 +154,10 @@ class PlayerViewController: UIViewController {
      * Remember to update the currentIndex
      */
     func nextTrackTapped(sender: UIButton) {
-    
+        if (currentIndex < tracks.count - 1) {
+            currentIndex! += 1
+            conditionalPlay()
+        }
     }
 
     /*
@@ -154,9 +171,29 @@ class PlayerViewController: UIViewController {
      */
 
     func previousTrackTapped(sender: UIButton) {
-    
+        if Float(player.currentTime().value) / Float(player.currentTime().timescale) > 3 {
+            player.seekToTime(CMTime(seconds: 0, preferredTimescale: 1))
+            player.play()
+        } else if currentIndex > 0 {
+            currentIndex! -= 1
+            conditionalPlay()
+        }
     }
     
+    func conditionalPlay() {
+        loadTrackElements()
+        let oldRate = player.rate
+        let path = NSBundle.mainBundle().pathForResource("Info", ofType: "plist")
+        let clientID = NSDictionary(contentsOfFile: path!)?.valueForKey("client_id") as! String
+        let track = tracks[currentIndex]
+        let url = NSURL(string: "https://api.soundcloud.com/tracks/\(track.id)/stream?client_id=\(clientID)")!
+        player = AVPlayer(playerItem: AVPlayerItem(URL: url))
+        currentTrack = url
+        
+        if oldRate != 0 {
+            player.play()
+        }
+    }
     
     func asyncLoadTrackImage(track: Track) {
         let url = NSURL(string: track.artworkURL)
